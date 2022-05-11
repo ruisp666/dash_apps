@@ -2,14 +2,7 @@ from dash import Dash, dash_table, dcc, html, Input, Output
 
 # A bit of style
 import dash_bootstrap_components as dbc
-
-from fmp_extractor.prices.live import extract_prices_all_nyse
 from aux import get_names_symbols, get_all_quotes
-
-all_nyse = extract_prices_all_nyse()
-all_nyse_only_stocks = all_nyse.loc[all_nyse['marketCap'].notnull(), :].copy()
-all_nyse_only_stocks.loc[:, 'price_to_yearHighpercent'] = (all_nyse_only_stocks.loc[:, 'price'] /
-                                                           all_nyse_only_stocks.loc[:, 'yearHigh'] * 100).copy()
 
 # List of options for tickers based on the list of available symbols
 names_symbols = get_names_symbols()
@@ -37,6 +30,8 @@ app.layout = html.Div(children=[
 @app.callback(Output('table', 'children'), Input('exchange', 'value'))
 def get_quotes_exchange(exch):
     df = get_all_quotes(exch)
+    df.loc[:, 'price_to_yearHighpercent'] = (df.loc[:, 'price'] /
+                                             df.loc[:, 'yearHigh'] * 100).copy()
     df['marketCap'] *= 1e-9
     df['voltoavgvolume'] = df['volume'] / df['avgVolume']
     return dash_table.DataTable(
