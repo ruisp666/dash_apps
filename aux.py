@@ -58,25 +58,21 @@ graph_callback_high_freq = partial(graph_callback, extract_type='high_freq')
 def get_all_quotes(exchange: str):
     tickers_to_extract = LIST_SYMBOLS.loc[LIST_SYMBOLS.exchange == exchange, 'symbol'].values
     len_exchange = len(tickers_to_extract)
-    batch_size = 800
-    if len_exchange < batch_size:
-        return extract_prices_batch(tickers_to_extract)
-    else:
-        print(f'Updating {batch_size} tickers per request')
-        n_batches = np.ceil(len_exchange / batch_size)
-        arrays = np.array_split(tickers_to_extract, n_batches)
-        # Using np.vectorize here does not work quite efficiently, since the splits are ragged
-        while True:
-            try:
-                print(f'{n_batches} requests of size {batch_size}')
-                frame = [extract_prices_batch(t) for t in arrays]
-                break
-            except urllib.error.HTTPError:
-                logging.info('Resulting HTML request is too long')
-                logging.info('Increasing the size of the batches')
-                n_batches += 1
-                arrays = np.array_split(tickers_to_extract, n_batches)
-        return pd.concat(frame)
+    batch_size = 1500
+    # Using np.vectorize here does not work quite efficiently, since the splits are ragged
+    n_batches = int(np.ceil(len_exchange / batch_size))
+    print(f'Getting {exchange} with {len_exchange} tickers with {n_batches} request(s) of maximum size {batch_size}')
+    while True:
+        try:
+            arrays = np.array_split(tickers_to_extract, n_batches)
+            frame = [extract_prices_batch(t) for t in arrays]
+            break
+        except urllib.error.HTTPError:
+            logging.warning('Resulting HTML request is too long')
+            n_batches += 1
+            logging.warning(f'Increasing the size of the batches to {n_batches}')
+
+    return pd.concat(frame)
 
 
 if __name__ == '__main__':
